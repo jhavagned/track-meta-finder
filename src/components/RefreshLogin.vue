@@ -59,7 +59,7 @@
         password: '',
         showPassword: false,
         isLoading: false,
-        apiUrl: process.env.VUE_APP_API_URL || 'http://localhost:3000/login',
+        apiUrl: `${process.env.VUE_APP_API_URL}/login` || 'http://localhost:3000/login',
       };
     },
     setup() {

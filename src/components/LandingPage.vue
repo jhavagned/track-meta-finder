@@ -49,16 +49,10 @@
     </div>
   </div>
 </template>
-
 <script>
+import { logInfo, logWarn, logError } from '@/utils/logger';
 import { useUserStore } from '@/stores/userStore';
 
-/**
- * LoginComponent is responsible for user authentication.
- * It allows users to log in using their username and password,
- * manages the display of error messages, and handles the visibility
- * of the password input.
- */
 export default {
   data() {
     return {
@@ -69,80 +63,87 @@ export default {
       errorMessage: '',
       showPassword: false,
       isLoading: false,
-      apiUrl: process.env.VUE_APP_API_URL || 'http://localhost:3000/login' // Use environment variable
+      apiUrl: `${process.env.VUE_APP_API_URL}/login` || 'http://localhost:3000/login',
     };
   },
 
   setup() {
-    const userStore = useUserStore(); // Access the Vuex store
+    const userStore = useUserStore();
     return { userStore };
   },
 
   methods: {
     /**
-     * Handles the login process by sending the username and password
-     * to the server and setting the authentication cookie if successful.
-     * Displays error messages for failed login attempts.
-     *
-     * @async
-     * @returns {Promise<void>}
+     * Handles the login process.
      */
     async login() {
-      this.errorMessage = ''; // Clear previous error message
-      this.isLoading = true; // Start loading
+      this.errorMessage = '';
+      this.isLoading = true;
 
-      // Validate if fields are not empty
       if (!this.username || !this.password) {
         this.errorMessage = 'Please fill in both username and password';
-        this.isLoading = false; // Stop loading
+        this.isLoading = false;
+
+        // Log form validation error
+        logWarn('Login attempt failed: missing credentials');
         return;
       }
 
       try {
-        // Make API request to the login endpoint
+        // Log that the API call is starting
+        logInfo('Sending login request to API');
+
         const response = await fetch(this.apiUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            username: this.username,
-            password: this.password,
+            username: this.username,  // This is not part of the log
+            password: this.password,  // Same here
           }),
         });
 
         // Check if the response is not OK
         if (!response.ok) {
           const errorData = await response.json();
+          logError(`Login failed: ${ errorData.message }`);
           throw new Error(errorData.message || 'Login failed');
         }
 
-        // Parse the JSON response
+        // Successful login
         const data = await response.json();
-        
         this.userStore.logIn(this.username, data.token, data.expiresIn);
 
-        // Redirect to a dashboard or homepage
+        // Log successful login as info (no username in log)
+        logInfo('User successfully logged in');
+
+        // Redirect user after login
         this.$router.push('/home');
 
       } catch (error) {
-        // Show error message on failed login
         this.errorMessage = error.message;
+
+        // Log failed login as a warning (no username in log)
+        logWarn(`Login failed: ${error.message}`);
       } finally {
-        this.isLoading = false; // Stop loading
+        this.isLoading = false;
       }
     },
 
     /**
      * Toggles the visibility of the password input field.
-     * When true, the password is visible; when false, it is hidden.
      */
     togglePasswordVisibility() {
-      this.showPassword = !this.showPassword; // Toggle visibility
+      this.showPassword = !this.showPassword;
+
+      // Log password visibility toggling action
+      logInfo(`Toggled password visibility to ${this.showPassword ? 'visible' : 'hidden'}`);
     },
   },
 };
 </script>
+
 
 <style scoped>
 .container {

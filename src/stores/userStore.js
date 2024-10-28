@@ -2,6 +2,7 @@
 
 import { defineStore } from 'pinia';
 import { getCookie, setCookie } from '../utils/authUtils';
+import { logToServer } from '../utils/logger';  // Import your logging utility
 
 export const useUserStore = defineStore('user', {
   state: () => ({
@@ -16,13 +17,11 @@ export const useUserStore = defineStore('user', {
   persist: true,  // Enable state persistence
 
   actions: {
-    logIn(username, token, expires) {
-      this.username = username;
+    logIn(token, expires) {
       this.isLoggedIn = true;
       this.isSessionExpired = false;  // Reset on login
 
       // Create a Date object from the expiration time
-       //TODO: Switch date variables
       const expirationDate = new Date(expires);
 
       this.startSession(token, expirationDate);
@@ -35,6 +34,9 @@ export const useUserStore = defineStore('user', {
         sameSite: 'Strict',
         expires: expiryDate,
       });
+
+      // Log the session start
+      logToServer(`Session started.`, { level: 'info'});
 
       this.setSessionExpiryWarning(expiryDate);
     },
@@ -54,10 +56,16 @@ export const useUserStore = defineStore('user', {
         this.sessionWarningTimeout = setTimeout(() => {
           this.showModal = true;  // Show the modal 1 minute before expiration
           
+          // Log the modal display event
+          logToServer(`Session warning modal displayed.`, { level: 'warn' });
+
           // Set a timeout to auto-close the modal after a certain time if no action is taken
           this.sessionCloseTimeout = setTimeout(() => {
             this.showModal = false;  // Close the modal
             this.endSession();  // Optionally, log out the user
+            
+            // Log the session end due to timeout
+            logToServer(`Session automatically closed due to timeout.`, { level: 'warn' });
           }, autoCloseTime);
         }, warningTime);
       }
@@ -96,12 +104,20 @@ export const useUserStore = defineStore('user', {
         this.startSession(data.newToken, newExpiryDate);  // Restart the session with a new expiry
         this.isSessionExpired = false;
         this.showModal = false;  // Hide the modal
+
+        // Log the session extension
+        logToServer(`Session extended.`, { level: 'info' });
       } catch (error) {
+        // Log the error during session extension
+        logToServer(`Error extending session: ${error.message}`, { level: 'error' });
         this.endSession();  // End session on error
       }
     },
 
     endSession() {
+      // Log the session ending
+      logToServer(`Ending session.`, { level: 'info' });
+
       // Clear any session data
       this.username = '';  // Clear the username
       this.isLoggedIn = false;  // Mark the user as logged out
@@ -115,7 +131,9 @@ export const useUserStore = defineStore('user', {
     },
 
     logOut() {
-      this.username = '';
+      // Log the logout action
+      logToServer(`User logged out.`, { level: 'info' });
+      this.username = '';  // Clear the username
       this.isLoggedIn = false;
       this.isSessionExpired = false;  // Reset on logout
       document.cookie = 'authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
@@ -124,10 +142,6 @@ export const useUserStore = defineStore('user', {
   },
 
   getters: {
-    getUsername(state) {
-      return state.username;
-    },
-    
     isUserLoggedIn(state) {
       return state.isLoggedIn;
     },
@@ -140,7 +154,6 @@ export const useUserStore = defineStore('user', {
  * This module defines the user store using Pinia for state management related to user authentication.
  * 
  * State Properties:
- * - username: Stores the username of the logged-in user.
  * - isLoggedIn: A boolean indicating if the user is logged in.
  * - showModal: Controls the visibility of session expiry warning modal.
  * - isSessionExpired: Indicates whether the user session has expired.
@@ -148,7 +161,7 @@ export const useUserStore = defineStore('user', {
  * - sessionCloseTimeout: Timeout for auto-closing the modal.
  * 
  * Actions:
- * - logIn(username, token, expires): Logs in the user and starts a session.
+ * - logIn(token, expires): Logs in the user and starts a session.
  * - startSession(token, expiryDate): Initiates a session and sets session expiration warnings.
  * - setSessionExpiryWarning(expiryDate): Sets up warnings for session expiration.
  * - extendSession(): Refreshes the session using a refresh token.
@@ -156,7 +169,6 @@ export const useUserStore = defineStore('user', {
  * - logOut(): Logs out the user and clears session data.
  * 
  * Getters:
- * - getUsername: Returns the username of the logged-in user.
  * - isUserLoggedIn: Returns whether the user is logged in.
  * 
  * State Persistence:
