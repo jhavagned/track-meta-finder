@@ -47,14 +47,6 @@ export function setCookie(name, value, options = {}) {
 
     // Set the cookie
     document.cookie = cookieString;
-
-    // Uncomment this if you want to schedule token expiry checks
-    /*
-    if (name === 'authToken') {
-        console.log("Scheduling token expiry check");
-        scheduleTokenExpiryCheck(value); // Assuming the value is the token
-    }
-    */
 }
 
 /**
